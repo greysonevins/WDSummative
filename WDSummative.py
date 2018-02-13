@@ -10,6 +10,7 @@ import bs4
 import json
 from pandas.io.json import json_normalize
 import collections
+import pprint
 
 WB_DATA_DF = pd.read_excel("world_bank_country_data.xlsx")
 
@@ -74,23 +75,23 @@ def cleanDataGlobal():
     WIKIDATA["South Korea"] = koreaFix
 
     WB_DATA_DF = WB_DATA_DF.applymap(lambda s: mapper.get(s) if s in mapper else s)
-    check = set(WB_DATA_DF["Country Name"])
-
-
-    included = []
-    excluded = []
-
-    for x in check:
-        if x in countries:
-            included.append(x)
-        else:
-            excluded.append(x)
 
     dropData = []
 
+
+
     g20Countries = set(G20_NAMES)
     allCountries = set(countries)
-    COUNTRIES_NAMES = allCountries.difference(G20_NAMES)
+    COUNTRIES_NAMES = allCountries.union(G20_NAMES)
+    check = set(WB_DATA_DF["Country Name"])
+
+    removeList = []
+
+    for country in COUNTRIES_NAMES:
+        if country not in check:
+            removeList.append(country)
+
+    COUNTRIES_NAMES = COUNTRIES_NAMES.difference(set(removeList))
 
     for index, row in WB_DATA_DF.iterrows():
         if row["Country Name"] in COUNTRIES_NAMES:
@@ -219,8 +220,8 @@ def main():
     interOtherCountries()
     countryValues()
 
-    print(G20CONNECTIONS)
-#     print(len(COUNTRIES_NAMES))
+    print(COUNTRIES_NAMES)
+    print(len(COUNTRIES_NAMES))
     pprint.pprint(COUNTRYLEVELS)
-#     pprint.pprint(G20CONNECTIONS)
+    pprint.pprint(G20CONNECTIONS)
 main()
