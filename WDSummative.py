@@ -59,20 +59,9 @@ def cleanDataGlobal():
     WIKIDATA["North Korea"] = WIKIDATA["Korea North"]
     del WIKIDATA["Korea North"]
 
-    WIKIPAGE = "South Korea"
 
-    URL = "http://en.wikipedia.org/wiki/Special:Export/%s" % urllib.parse.quote(WIKIPAGE)
-    req = urllib.request.Request( URL, headers={'User-Agent': 'OII class 2018.1/1025795'})
-
-    infile = urllib.request.urlopen(req)
-
-    wikitext = infile.read()
-
-    soup = bs4.BeautifulSoup(wikitext.decode('utf8'), "lxml")
-
-    koreaFix = soup.mediawiki.page.text
-
-    WIKIDATA["South Korea"] = koreaFix
+    addFixWiki("South Korea")
+    addFixWiki("European Union")
 
     WB_DATA_DF = WB_DATA_DF.applymap(lambda s: mapper.get(s) if s in mapper else s)
 
@@ -103,6 +92,22 @@ def cleanDataGlobal():
 
     WB_DATA_DF = WB_DATA_DF.drop(WB_DATA_DF.index[dropData])
 
+
+def addFixWiki(wikiEntry):
+    global WIKIDATA
+    URL = "http://en.wikipedia.org/wiki/Special:Export/%s" % urllib.parse.quote(wikiEntry)
+    req = urllib.request.Request( URL, headers={'User-Agent': 'OII class 2018.1/'})
+
+
+    infile = urllib.request.urlopen(req)
+
+    wikitext = infile.read()
+
+    soup = bs4.BeautifulSoup(wikitext.decode('utf8'), "lxml")
+
+    fix = soup.mediawiki.page.text
+
+    WIKIDATA[wikiEntry] = fix
 
 def getGTwenty():
     WIKIPAGE = "G20"
@@ -200,6 +205,7 @@ def countryValues():
                 comms2016.append("Missing")
 
         COUNTRYLEVELS[country]["gdp"] = gdpArray
+        COUNTRYLEVELS[country]["comms"] = comms2016
 
 
 
@@ -220,8 +226,6 @@ def main():
     interOtherCountries()
     countryValues()
 
-    print(COUNTRIES_NAMES)
-    print(len(COUNTRIES_NAMES))
     pprint.pprint(COUNTRYLEVELS)
     pprint.pprint(G20CONNECTIONS)
 main()
