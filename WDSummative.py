@@ -95,6 +95,8 @@ def cleanDataGlobal():
     for index, row in WB_DATA_DF.iterrows():
         if row["Country Name"] in COUNTRIES_NAMES:
             continue
+        elif row["Country Name"] in G20_NAMES:
+            continue
         else:
             dropData.append(index)
 
@@ -173,12 +175,12 @@ def countryValues():
               connectedCountries.update(set(connect))
 
     for country in connectedCountries:
-        print(country)
+
+        #
         preValueGDP   = WB_DATA_DF[(WB_DATA_DF["Country Name"] == country) & (WB_DATA_DF["Series Name"] == "Current account balance (% of GDP)")]
         preValueComms = WB_DATA_DF[(WB_DATA_DF["Country Name"] == country) & (WB_DATA_DF["Series Name"] == "Communications, computer, etc. (% of service imports, BoP)")]
 
-        if country == "United States":
-            display(WB_DATA_DF[(WB_DATA_DF["Country Name"] == country)])
+
         gdpArray = []
         comms2016 = []
         checkDates = ["2013 [YR2013]", "2014 [YR2014]", "2015 [YR2015]", "2016 [YR2016]", "2017 [YR2017]"]
@@ -194,18 +196,9 @@ def countryValues():
                 comms2016.append(preValueComms[dates].values[0])
 
             except IndexError:
-#                 print(preValueComms[dates])
                 comms2016.append("Missing")
 
         COUNTRYLEVELS[country]["gdp"] = gdpArray
-        COUNTRYLEVELS[country]["commns"] = gdpArray
-
-#         COUNTRYLEVELS[country]["comms"]["2013"] = comms2013
-#         COUNTRYLEVELS[country]["comms"]["2014"] = comms2014
-#         COUNTRYLEVELS[country]["comms"]["2015"] = comms2015
-#         COUNTRYLEVELS[country]["comms"]["2016"] = comms2016
-#         COUNTRYLEVELS[country]["comms"]["2017"] = comms2017
-
 
 
 
@@ -225,8 +218,9 @@ def main():
     cleanDataGlobal()
     interOtherCountries()
     countryValues()
-#     print(G20CONNECTIONS)
+
+    print(G20CONNECTIONS)
 #     print(len(COUNTRIES_NAMES))
-#     pprint.pprint(COUNTRYLEVELS)
+    pprint.pprint(COUNTRYLEVELS)
 #     pprint.pprint(G20CONNECTIONS)
 main()
