@@ -13,8 +13,6 @@ import pprint
 import igraph
 from igraph import *
 
-warnings.filterwarnings('ignore')
-%pylab inline
 
 WB_DATA_DF = pd.read_excel("world_bank_country_data.xlsx")
 
@@ -253,11 +251,7 @@ main()
 
 
 ### side plot work
-import collections
 
-warnings.filterwarnings('ignore')
-
-%pylab inline
 
 
 g = Graph()
@@ -269,6 +263,11 @@ for key, items in COUNTRYLEVELS.items():
     g.add_vertices(key)
     g.vs[counter]["account-balance"] = items["account-balance"]
     g.vs[counter]["exports"] = items["exports"]
+    if key in G20_NAMES:
+        g.vs[counter]["status"] = "G20"
+    else:
+        g.vs[counter]["status"] = "NotG20"
+
     CONNECTINDEX[key] = counter
     counter+=1
 
@@ -282,10 +281,32 @@ for keys, items in G20CONNECTIONS.items():
             for country in item:
                 edgeListG20.append(tuple([CONNECTINDEX[keys], CONNECTINDEX[country]]))
                 cn += 1
+        else:
             for country in item:
                 edgeListOutside.append(tuple([CONNECTINDEX[keys], CONNECTINDEX[country]]))
                 cn += 1
 
+color_dict = {"G20": "blue", "NotG20": "yellow", "No Data": "gray"}
+visual_style = {}
 g.add_edges(edgeListG20)
+visual_style["vertex_label_size"] = 25
+visual_style["vertex_label_color"] =  "black"
+visual_style["vertex_size"] = 0
+
+total = 0
+tc = 0
+counter = 0
+for gdp in g.vs["exports"]:
+    if gdp == 0:
+        g.vs[counter]["status"] = "No Data"
+
+visual_style["vertex_size"] = [20 + (balance - total) * 2 for balance in g.vs["exports"]]
+visual_style["vertex_color"] = [color_dict[status] for status in g.vs["status"]]
+
+g.add_edges(edgeListG20)
+
 g.add_edges(edgeListOutside)
 g.vs["label"] = g.vs["name"]
+layout = g.layout("rt_circular")
+
+plot(g, layout = layout, bbox= (1400, 1500), **visual_style)
