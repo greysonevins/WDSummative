@@ -7,10 +7,14 @@ import pickle
 import re
 import urllib.request
 import bs4
-import json
-from pandas.io.json import json_normalize
 import collections
 import pprint
+
+import igraph
+from igraph import *
+
+warnings.filterwarnings('ignore')
+%pylab inline
 
 WB_DATA_DF = pd.read_excel("world_bank_country_data.xlsx")
 
@@ -50,7 +54,8 @@ def cleanDataGlobal():
       "Cabo Verde"                     : "Cape Verde",
       "Micronesia, Fed. Sts."          : "Micronesia",
       "Yemen, Rep."                    : "Yemen",
-      "Lao PDR"                        : "Laos"
+      "Lao PDR"                        : "Laos",
+      ".."                             : 0,
     }
 
     WIKIDATA["South Korea"] = WIKIDATA["Korea South"]
@@ -61,7 +66,6 @@ def cleanDataGlobal():
 
 
     addFixWiki("South Korea")
-    addFixWiki("European Union")
 
     WB_DATA_DF = WB_DATA_DF.applymap(lambda s: mapper.get(s) if s in mapper else s)
 
@@ -96,7 +100,7 @@ def cleanDataGlobal():
 def addFixWiki(wikiEntry):
     global WIKIDATA
     URL = "http://en.wikipedia.org/wiki/Special:Export/%s" % urllib.parse.quote(wikiEntry)
-    req = urllib.request.Request( URL, headers={'User-Agent': 'OII class 2018.1/'})
+    req = urllib.request.Request( URL, headers={'User-Agent': 'OII class 2018.1/1025795'})
 
 
     infile = urllib.request.urlopen(req)
@@ -126,7 +130,7 @@ def getGTwenty():
     step1Cut = g20Data.split("===Leaders===")
     text_to_parse = step1Cut[1].split("=== Member country data ===")[0]
 
-    regCite = re.compile("\{flag(.*?)\}")
+    regCite = re.compile("\{flagcountry(.*?)\}")
     resultCite = regCite.findall(text_to_parse)
     finalList = []
 
@@ -144,31 +148,29 @@ def interOtherCountries():
     global G20CONNECTIONS
     countryLevelInclu = collections.defaultdict(dict)
     for c in G20_NAMES:
-        if c == "European Union":
-            continue
 
-        else:
-            countryRegex = "\[\[(.*?)\]\]"
-            interlink = re.compile(countryRegex)
+        countryRegex = "\[\[(.*?)\]\]"
+        interlink = re.compile(countryRegex)
 
-            preCountryData = interlink.findall(WIKIDATA[c])
+        preCountryData = interlink.findall(WIKIDATA[c])
 
-            exclusiveCountry = []
-            inclusiveCountry = []
+        exclusiveCountry = []
+        inclusiveCountry = []
 
-            for country in preCountryData:
-                fixCountry = country.split("|")
-                for fix in fixCountry:
-                    if fix in G20_NAMES:
-                        if fix not in exclusiveCountry:
-                            if fix != c:
-                                exclusiveCountry.append(fix)
-                    elif fix in COUNTRIES_NAMES:
+        for country in preCountryData:
+            fixCountry = country.split("|")
+            for fix in fixCountry:
+                if fix in G20_NAMES:
+                    if fix not in exclusiveCountry:
                         if fix != c:
-                            if fix not in inclusiveCountry:
-                                inclusiveCountry.append(fix)
-            countryLevelInclu[c][len(exclusiveCountry)] = exclusiveCountry
-            countryLevelInclu[c][len(inclusiveCountry)] = inclusiveCountry
+                            exclusiveCountry.append(fix)
+                elif fix in COUNTRIES_NAMES:
+                    if fix != c:
+                        if fix not in inclusiveCountry:
+                            inclusiveCountry.append(fix)
+        countryLevelInclu[c]["Inside G20"] = exclusiveCountry
+        countryLevelInclu[c]["Outside G20"] = inclusiveCountry
+
     G20CONNECTIONS = countryLevelInclu
 
 def countryValues():
@@ -184,28 +186,48 @@ def countryValues():
 
         #
         preValueGDP   = WB_DATA_DF[(WB_DATA_DF["Country Name"] == country) & (WB_DATA_DF["Series Name"] == "Current account balance (% of GDP)")]
-        preValueComms = WB_DATA_DF[(WB_DATA_DF["Country Name"] == country) & (WB_DATA_DF["Series Name"] == "Communications, computer, etc. (% of service imports, BoP)")]
+        preValueExports = WB_DATA_DF[(WB_DATA_DF["Country Name"] == country) & (WB_DATA_DF["Series Name"] == "Exports of goods and services (BoP, current US$)")]
 
 
-        gdpArray = []
-        comms2016 = []
+        gdpNewest= 0
+        exportsNewest = 0
         checkDates = ["2013 [YR2013]", "2014 [YR2014]", "2015 [YR2015]", "2016 [YR2016]", "2017 [YR2017]"]
 
         for dates in checkDates:
             try:
-                gdpArray.append(preValueGDP[dates].values[0])
+                gdp = preValueGDP[dates].values[0]
+
+                if gdpNewest != 0 and gdp != 0:
+                    gdpNewest = gdp
+
+                elif gdpNewest == 0 and gdp != 0:
+                    gdpNewest = gdp
+
+                elif gdpNewest != 0 and gdp == 0:
+                    continue
+
 
             except IndexError:
-                gdpArray.append("Missing")
+                continue
 
             try:
-                comms2016.append(preValueComms[dates].values[0])
+                exports = preValueExports[dates].values[0]
+
+                if exportsNewest != 0 and exports != 0:
+                    exportsNewest = gdp
+
+                elif exportsNewest == 0 and exports != 0:
+                    exportsNewest = gdp
+
+                elif exportsNewest != 0 and exports == 0:
+                    continue
+
 
             except IndexError:
-                comms2016.append("Missing")
+                continue
 
-        COUNTRYLEVELS[country]["gdp"] = gdpArray
-        COUNTRYLEVELS[country]["comms"] = comms2016
+        COUNTRYLEVELS[country]["account-balance"] = gdpNewest
+        COUNTRYLEVELS[country]["exports"] = exportsNewest
 
 
 
@@ -226,6 +248,44 @@ def main():
     interOtherCountries()
     countryValues()
 
-    pprint.pprint(COUNTRYLEVELS)
-    pprint.pprint(G20CONNECTIONS)
 main()
+
+
+
+### side plot work
+import collections
+
+warnings.filterwarnings('ignore')
+
+%pylab inline
+
+
+g = Graph()
+
+CONNECTINDEX = collections.defaultdict(dict)
+
+counter = 0
+for key, items in COUNTRYLEVELS.items():
+    g.add_vertices(key)
+    g.vs[counter]["account-balance"] = items["account-balance"]
+    g.vs[counter]["exports"] = items["exports"]
+    CONNECTINDEX[key] = counter
+    counter+=1
+
+edgeListG20 = []
+edgeListOutside = []
+for keys, items in G20CONNECTIONS.items():
+
+    cn = 0
+    for key, item in items.items():
+        if cn == 0:
+            for country in item:
+                edgeListG20.append(tuple([CONNECTINDEX[keys], CONNECTINDEX[country]]))
+                cn += 1
+            for country in item:
+                edgeListOutside.append(tuple([CONNECTINDEX[keys], CONNECTINDEX[country]]))
+                cn += 1
+
+g.add_edges(edgeListG20)
+g.add_edges(edgeListOutside)
+g.vs["label"] = g.vs["name"]
