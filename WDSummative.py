@@ -19,7 +19,6 @@ from igraph import *
 WB_DATA_DF = pd.read_excel("world_bank_country_data.xlsx")
 
 WIKIDATA =  pd.read_pickle( "wiki_country_data.pkl")
-# "wiki_country_data.pkl", "rb+" ) )
 
 G20_NAMES = []
 COUNTRIES_NAMES = []
@@ -101,7 +100,7 @@ def cleanDataGlobal():
 def addFixWiki(wikiEntry):
     global WIKIDATA
     URL = "http://en.wikipedia.org/wiki/Special:Export/%s" % urllib.parse.quote(wikiEntry)
-    req = urllib.request.Request( URL, headers={'User-Agent': 'OII class 2018.1/1025795'})
+    req = urllib.request.Request( URL, headers={'User-Agent': 'OII class 2018.1/'})
 
 
     infile = urllib.request.urlopen(req)
@@ -185,14 +184,16 @@ def countryValues():
 
     for country in connectedCountries:
 
-        #
-        preValueGDP   = WB_DATA_DF[(WB_DATA_DF["Country Name"] == country) & (WB_DATA_DF["Series Name"] == "Current account balance (% of GDP)")]
-        preValueExports = WB_DATA_DF[(WB_DATA_DF["Country Name"] == country) & (WB_DATA_DF["Series Name"] == "Exports of goods and services (BoP, current US$)")]
+        preValueGDP   = WB_DATA_DF[(WB_DATA_DF["Country Name"] == country) & \
+                    (WB_DATA_DF["Series Name"] == "Current account balance (% of GDP)")]
+        preValueExports = WB_DATA_DF[(WB_DATA_DF["Country Name"] == country) & \
+                    (WB_DATA_DF["Series Name"] == "Exports of goods and services (BoP, current US$)")]
 
 
         gdpNewest= 0
         exportsNewest = 0
-        checkDates = ["2013 [YR2013]", "2014 [YR2014]", "2015 [YR2015]", "2016 [YR2016]", "2017 [YR2017]"]
+        checkDates = ["2013 [YR2013]", "2014 [YR2014]", "2015 [YR2015]", \
+                        "2016 [YR2016]", "2017 [YR2017]"]
 
         for dates in checkDates:
             try:
@@ -262,7 +263,8 @@ def createNodeConnect():
                     cn += 1
             else:
                 for country in item:
-                    edgeListOutside.append(tuple([CONNECTINDEX[keys], CONNECTINDEX[country]]))
+                    edgeListOutside.append(tuple([CONNECTINDEX[keys], \
+                            CONNECTINDEX[country]]))
                     cn += 1
     networkGraph.add_edges(edgeListG20)
     networkGraph.add_edges(edgeListOutside)
@@ -343,21 +345,25 @@ def buildGraphAcctBal(networkGraph2):
     total = total/tc
 
 
-    visual_style["vertex_size"] = [10 + (balance - total) for balance in networkGraph2.vs["account-balance"]]
-    visual_style["vertex_color"] = [color_dict[status] for status in networkGraph2.vs["status"]]
+    visual_style["vertex_size"] = [10 + (balance - total) for balance in \
+                        networkGraph2.vs["account-balance"]]
+    visual_style["vertex_color"] = [color_dict[status] for status in \
+                        networkGraph2.vs["status"]]
 
     networkGraph2.vs["label"] = networkGraph2.vs["name"]
     layout = networkGraph2.layout("rt_circular")
 
     plot2 = Plot(fileName,  bbox= (1100, 1100), background="#dff9fb")
-    plot2.add(networkGraph2, bbox= (55, 55, 1000, 1000), layout = layout, **visual_style)
+    plot2.add(networkGraph2, bbox= (55, 55, 900, 900), layout = layout, \
+                                    **visual_style)
 
 
     plot2.redraw()
 
     ctx = cairo.Context(plot2.surface)
     ctx.set_font_size(20)
-    drawer = TextDrawer(ctx, "Wikipedia G20 Network Analysis viz. AcctBalance", halign=TextDrawer.CENTER)
+    drawer = TextDrawer(ctx, "Wikipedia G20 Network Analysis viz. AcctBalance",\
+                            halign=TextDrawer.CENTER)
     drawer.draw_at(0,40, width=1000)
 
     plot2.save()
