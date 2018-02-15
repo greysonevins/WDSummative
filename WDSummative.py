@@ -277,6 +277,7 @@ def buildGraphExports(networkGraph):
     fileName = "NetworkWikiExportsWD2018.png"
 
     color_dict = {"G20": "blue", "NotG20": "yellow", "No Data": "gray"}
+    color_dict_edge = {"G20": "#5bbbfb", "NotG20": "#95afc0"}
     visual_style = {}
     visual_style["vertex_label_size"] = 15
     visual_style["vertex_label_color"] =  "#130f40"
@@ -303,6 +304,25 @@ def buildGraphExports(networkGraph):
     visual_style["vertex_size"] = [10 + (balance - total) for balance in networkGraph.vs["exports"]]
     visual_style["vertex_color"] = [color_dict[status] for status in networkGraph.vs["status"]]
 
+    ce = 0
+    for edge in networkGraph.es:
+        v1 = "NotG20"
+        v2 = "NotG20"
+
+        if networkGraph.vs[edge.target]["name"] in G20_NAMES:
+            v1 = "G20"
+        if networkGraph.vs[edge.source]["name"] in G20_NAMES:
+            v2 = "G20"
+        if v1 == "G20" and v2 =="G20":
+            networkGraph.es[ce]["connection_type"] = "G20"
+        else:
+            networkGraph.es[ce]["connection_type"] = "NotG20"
+        ce += 1
+
+    visual_style["edge_color"] = [color_dict_edge[conntype] for conntype in \
+                        networkGraph.es["connection_type"]]
+
+
     networkGraph.vs["label"] = networkGraph.vs["name"]
     layout = networkGraph.layout("rt_circular")
 
@@ -320,8 +340,10 @@ def buildGraphExports(networkGraph):
     plot.save()
 
 def buildGraphAcctBal(networkGraph2):
-    fileName = "NetworkWikieAcctBalanceWD2018.png"
+    fileName = "NetworkWikiAcctBalanceWD2018.png"
     color_dict = {"G20": "blue", "NotG20": "yellow", "No Data": "gray"}
+    color_dict_edge = {"G20": "#5bbbfb", "NotG20": "#95afc0"}
+
     visual_style = {}
     visual_style["vertex_label_size"] = 15
     visual_style["vertex_label_color"] =  "#130f40"
@@ -349,6 +371,25 @@ def buildGraphAcctBal(networkGraph2):
                         networkGraph2.vs["account-balance"]]
     visual_style["vertex_color"] = [color_dict[status] for status in \
                         networkGraph2.vs["status"]]
+    ce = 0
+    for edge in networkGraph2.es:
+        v1 = "NotG20"
+        v2 = "NotG20"
+
+        if networkGraph2.vs[edge.target]["name"] in G20_NAMES:
+            v1 = "G20"
+        if networkGraph2.vs[edge.source]["name"] in G20_NAMES:
+            v2 = "G20"
+        if v1 == "G20" and v2 =="G20":
+            networkGraph2.es[ce]["connection_type"] = "G20"
+        else:
+            networkGraph2.es[ce]["connection_type"] = "NotG20"
+        ce += 1
+
+    visual_style["edge_color"] = [color_dict_edge[conntype] for conntype in \
+                        networkGraph2.es["connection_type"]]
+
+
 
     networkGraph2.vs["label"] = networkGraph2.vs["name"]
     layout = networkGraph2.layout("rt_circular")
