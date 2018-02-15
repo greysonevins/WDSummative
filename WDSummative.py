@@ -9,8 +9,10 @@ import urllib.request
 import bs4
 import collections
 import pprint
-
 import igraph
+from igraph import Plot
+from igraph.drawing.text import TextDrawer
+import cairo
 from igraph import *
 
 
@@ -23,6 +25,7 @@ G20_NAMES = []
 COUNTRIES_NAMES = []
 G20CONNECTIONS = {}
 COUNTRYLEVELS = collections.defaultdict(dict)
+CONNECTINDEX = collections.defaultdict(dict)
 
 def cleanDataGlobal():
     global WB_DATA_DF, COUNTRIES_NAMES
@@ -229,84 +232,145 @@ def countryValues():
 
 
 
-### Interact with Pickle File to decode countries
-    ## i.e. how many countries are connected?
-    ## another value I can incorparate?
+def createNodeConnect():
+    networkGraph = Graph()
 
 
-### Graphic Model?
+    counter = 0
+    for key, items in COUNTRYLEVELS.items():
+        networkGraph.add_vertices(key)
+        networkGraph.vs[counter]["account-balance"] = items["account-balance"]
+        networkGraph.vs[counter]["exports"] = items["exports"]
+        if key in G20_NAMES:
+            networkGraph.vs[counter]["status"] = "G20"
+        else:
+            networkGraph.vs[counter]["status"] = "NotG20"
 
-    ## connected graphs
-###
+        CONNECTINDEX[key] = counter
+        counter+=1
+
+    edgeListG20 = []
+    edgeListOutside = []
+
+    for keys, items in G20CONNECTIONS.items():
+
+        cn = 0
+        for key, item in items.items():
+            if cn == 0:
+                for country in item:
+                    edgeListG20.append(tuple([CONNECTINDEX[keys], CONNECTINDEX[country]]))
+                    cn += 1
+            else:
+                for country in item:
+                    edgeListOutside.append(tuple([CONNECTINDEX[keys], CONNECTINDEX[country]]))
+                    cn += 1
+    networkGraph.add_edges(edgeListG20)
+    networkGraph.add_edges(edgeListOutside)
+
+
+    return networkGraph
+
+def buildGraphExports(networkGraph):
+
+    fileName = "NetworkWikiExportsWD2018.png"
+
+    color_dict = {"G20": "blue", "NotG20": "yellow", "No Data": "gray"}
+    visual_style = {}
+    visual_style["vertex_label_size"] = 15
+    visual_style["vertex_label_color"] =  "#130f40"
+    visual_style["edge_color"] = "#95afc0"
+    visual_style["vertex_size"] = 0
+
+    total = 0
+    tc = 0
+    counter = 0
+
+    for exports in networkGraph.vs["exports"]:
+        if exports == 0:
+            networkGraph.vs[counter]["status"] = "No Data"
+            counter += 1
+
+        else:
+            counter += 1
+            tc += 1
+            total += exports
+
+    total = total/tc
+
+
+    visual_style["vertex_size"] = [10 + (balance - total) for balance in networkGraph.vs["exports"]]
+    visual_style["vertex_color"] = [color_dict[status] for status in networkGraph.vs["status"]]
+
+    networkGraph.vs["label"] = networkGraph.vs["name"]
+    layout = networkGraph.layout("rt_circular")
+
+    plot = Plot(fileName,  bbox= (1000, 1100), background="#dff9fb")
+    plot.add(networkGraph, bbox= (55, 55, 900, 900), layout = layout, **visual_style)
+
+
+    plot.redraw()
+
+    ctx = cairo.Context(plot.surface)
+    ctx.set_font_size(20)
+    drawer = TextDrawer(ctx, "Wikipedia G20 Network Analysis viz. Exports", halign=TextDrawer.CENTER)
+    drawer.draw_at(0,40, width=1000)
+
+    plot.save()
+
+def buildGraphAcctBal(networkGraph2):
+    fileName = "NetworkWikieAcctBalanceWD2018.png"
+    color_dict = {"G20": "blue", "NotG20": "yellow", "No Data": "gray"}
+    visual_style = {}
+    visual_style["vertex_label_size"] = 15
+    visual_style["vertex_label_color"] =  "#130f40"
+    visual_style["edge_color"] = "#95afc0"
+    visual_style["vertex_size"] = 0
+
+    total = 0
+    tc = 0
+    counter = 0
+
+    for acctBal in networkGraph2.vs["account-balance"]:
+        if acctBal == 0:
+            networkGraph2.vs[counter]["status"] = "No Data"
+            counter += 1
+
+        else:
+            counter += 1
+            tc += 1
+            total += acctBal
+
+    total = total/tc
+
+
+    visual_style["vertex_size"] = [10 + (balance - total) for balance in networkGraph2.vs["account-balance"]]
+    visual_style["vertex_color"] = [color_dict[status] for status in networkGraph2.vs["status"]]
+
+    networkGraph2.vs["label"] = networkGraph2.vs["name"]
+    layout = networkGraph2.layout("rt_circular")
+
+    plot2 = Plot(fileName,  bbox= (1100, 1100), background="#dff9fb")
+    plot2.add(networkGraph2, bbox= (55, 55, 1000, 1000), layout = layout, **visual_style)
+
+
+    plot2.redraw()
+
+    ctx = cairo.Context(plot2.surface)
+    ctx.set_font_size(20)
+    drawer = TextDrawer(ctx, "Wikipedia G20 Network Analysis viz. AcctBalance", halign=TextDrawer.CENTER)
+    drawer.draw_at(0,40, width=1000)
+
+    plot2.save()
 
 def main():
     global G20_NAMES
+
     G20_NAMES = getGTwenty()
     cleanDataGlobal()
     interOtherCountries()
     countryValues()
+    networkGraph = createNodeConnect()
+    buildGraphExports(networkGraph)
+    buildGraphAcctBal(networkGraph)
 
 main()
-
-
-
-### side plot work
-
-
-
-g = Graph()
-
-CONNECTINDEX = collections.defaultdict(dict)
-
-counter = 0
-for key, items in COUNTRYLEVELS.items():
-    g.add_vertices(key)
-    g.vs[counter]["account-balance"] = items["account-balance"]
-    g.vs[counter]["exports"] = items["exports"]
-    if key in G20_NAMES:
-        g.vs[counter]["status"] = "G20"
-    else:
-        g.vs[counter]["status"] = "NotG20"
-
-    CONNECTINDEX[key] = counter
-    counter+=1
-
-edgeListG20 = []
-edgeListOutside = []
-for keys, items in G20CONNECTIONS.items():
-
-    cn = 0
-    for key, item in items.items():
-        if cn == 0:
-            for country in item:
-                edgeListG20.append(tuple([CONNECTINDEX[keys], CONNECTINDEX[country]]))
-                cn += 1
-        else:
-            for country in item:
-                edgeListOutside.append(tuple([CONNECTINDEX[keys], CONNECTINDEX[country]]))
-                cn += 1
-
-color_dict = {"G20": "blue", "NotG20": "yellow", "No Data": "gray"}
-visual_style = {}
-g.add_edges(edgeListG20)
-visual_style["vertex_label_size"] = 25
-visual_style["vertex_label_color"] =  "black"
-visual_style["vertex_size"] = 0
-
-total = 0
-tc = 0
-counter = 0
-for gdp in g.vs["exports"]:
-    if gdp == 0:
-        g.vs[counter]["status"] = "No Data"
-
-visual_style["vertex_size"] = [20 + (balance - total) * 2 for balance in g.vs["exports"]]
-visual_style["vertex_color"] = [color_dict[status] for status in g.vs["status"]]
-
-g.add_edges(edgeListG20)
-
-g.add_edges(edgeListOutside)
-g.vs["label"] = g.vs["name"]
-layout = g.layout("rt_circular")
-
-plot(g, layout = layout, bbox= (1400, 1500), **visual_style)
